@@ -10,8 +10,7 @@ import com.udacity.project4.locationreminders.data.dto.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.runBlocking
-import org.hamcrest.CoreMatchers.`is`
-import org.hamcrest.CoreMatchers.instanceOf
+import org.hamcrest.CoreMatchers.*
 import org.hamcrest.MatcherAssert.assertThat
 import org.junit.After
 import org.junit.Before
@@ -25,6 +24,53 @@ import org.junit.runner.RunWith
 @MediumTest
 class RemindersLocalRepositoryTest {
 
-//    TODO: Add testing implementation to the RemindersLocalRepository.kt
+//    : Add testing implementation to the RemindersLocalRepository.kt
+    private lateinit var localDataSource: RemindersLocalRepository
+    private lateinit var database: RemindersDatabase
 
+    @get:Rule
+    var instantExecutorRule = InstantTaskExecutorRule()
+
+    @Before
+    fun setup() {
+        database = Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            RemindersDatabase::class.java
+        )
+            .allowMainThreadQueries()
+            .build()
+
+        localDataSource =
+            RemindersLocalRepository(
+                    database.reminderDao(),
+                    Dispatchers.Main
+            )
+    }
+
+    @Test
+    fun saveAndRetrieveAReminder() = runBlocking {
+        val reminder = ReminderDTO(
+                "title",
+                "description",
+                "location",
+                0.0,
+                0.0)
+
+        localDataSource.saveReminder(reminder)
+
+        val reminderLocalDTO = localDataSource.getReminder(reminder.id)
+
+        assertThat(reminderLocalDTO, not(nullValue()))
+        reminderLocalDTO as Result.Success
+        assertThat(reminderLocalDTO.data.title, `is`(reminder.title))
+        assertThat(reminderLocalDTO.data.description, `is`(reminder.description))
+        assertThat(reminderLocalDTO.data.location, `is`(reminder.location))
+        assertThat(reminderLocalDTO.data.latitude, `is`(reminder.latitude))
+        assertThat(reminderLocalDTO.data.longitude, `is`(reminder.longitude))
+    }
+
+    @After
+    fun cleanUp() {
+        database.close()
+    }
 }
