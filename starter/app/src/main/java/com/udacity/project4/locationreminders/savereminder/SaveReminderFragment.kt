@@ -1,6 +1,7 @@
 package com.udacity.project4.locationreminders.savereminder
 
 import android.Manifest
+import android.annotation.TargetApi
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.IntentSender
@@ -49,7 +50,7 @@ class SaveReminderFragment : BaseFragment() {
     private val geofencePendingIntent: PendingIntent by lazy {
         val intent = Intent(requireContext(), GeofenceBroadcastReceiver::class.java)
         intent.action = ACTION_GEOFENCE_EVENT
-        PendingIntent.getBroadcast(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
+        PendingIntent.getBroadcast(requireContext(), 0, intent, PendingIntent.FLAG_UPDATE_CURRENT)
     }
     private val isAndroidQVersionOrLater =
             android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q
@@ -92,7 +93,6 @@ class SaveReminderFragment : BaseFragment() {
             if(_viewModel.validateAndSaveReminder(reminderDataItem)) {
                 checkDeviceLocationSettingsAndStartGeofence(dataItem = reminderDataItem)
             }
-            addGeofences(reminderDataItem)
         }
     }
 
@@ -125,6 +125,19 @@ class SaveReminderFragment : BaseFragment() {
         }
     }
 
+    private fun removeGeofences() {
+        if (!foregroundAndBackgroundLocationPermissionApproved()) {
+            return
+        }
+        geofencingClient.removeGeofences(geofencePendingIntent)?.run {
+            addOnSuccessListener {
+                Log.d(TAG, "Geofence removed")
+            }
+            addOnFailureListener {
+                Log.d(TAG, "Failed on remove Geofence")
+            }
+        }
+    }
     override fun onRequestPermissionsResult(
             requestCode: Int,
             permissions: Array<String>,
@@ -165,6 +178,7 @@ class SaveReminderFragment : BaseFragment() {
         }
     }
 
+    @TargetApi(29)
     private fun foregroundAndBackgroundLocationPermissionApproved(): Boolean {
         val foregroundLocationApproved = (
                 PackageManager.PERMISSION_GRANTED ==
@@ -185,7 +199,7 @@ class SaveReminderFragment : BaseFragment() {
     /*
      *  Requests ACCESS_FINE_LOCATION and (on Android 10+ (Q) ACCESS_BACKGROUND_LOCATION.
      */
-
+    @TargetApi(29)
     private fun requestForegroundAndBackgroundLocationPermissions() {
         if (foregroundAndBackgroundLocationPermissionApproved())
             return
@@ -252,6 +266,7 @@ class SaveReminderFragment : BaseFragment() {
         super.onDestroy()
         //make sure to clear the view model after destroy, as it's a single view model.
         _viewModel.onClear()
+        removeGeofences()
     }
 
     companion object {

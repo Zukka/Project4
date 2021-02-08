@@ -34,6 +34,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     private lateinit var binding: FragmentSelectLocationBinding
     private lateinit var map: GoogleMap
     private var marker: Marker? = null
+    var currentPoi: PointOfInterest? = null
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private val zoomLevel = 16F
 
@@ -50,6 +51,9 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         binding.viewModel = _viewModel
         binding.lifecycleOwner = this
 
+        binding.savePoi.setOnClickListener {
+            onLocationSelected()
+        }
         setHasOptionsMenu(true)
         setDisplayHomeAsUpEnabled(true)
 
@@ -131,7 +135,8 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     private fun setPoiClick(map: GoogleMap) {
         map.setOnPoiClickListener { poi ->
-
+            binding.savePoi.visibility = View.VISIBLE
+            currentPoi = poi
             marker?.remove()
 
             marker = map.addMarker(
@@ -139,10 +144,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                             .position(poi.latLng)
                             .title(poi.name)
             )
-            _viewModel.selectedPOI.postValue(poi)
-            marker?.let {
-                onLocationSelected(it)
-            }
+            marker?.showInfoWindow()
         }
     }
 
@@ -165,14 +167,15 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
 
-    private fun onLocationSelected(marker: Marker) {
+    private fun onLocationSelected() {
         //         When the user confirms on the selected location,
         //         send back the selected location details to the view model
         //         and navigate back to the previous fragment to save the reminder and add the geofence
 
-        _viewModel.latitude.postValue(marker.position.latitude)
-        _viewModel.longitude.postValue(marker.position.longitude)
-        _viewModel.reminderSelectedLocationStr.postValue(marker.title)
+        _viewModel.selectedPOI.value = currentPoi
+        _viewModel.reminderSelectedLocationStr.value = currentPoi?.name
+        _viewModel.latitude.value = currentPoi?.latLng?.latitude
+        _viewModel.longitude.value = currentPoi?.latLng?.longitude
         _viewModel.navigationCommand.postValue(NavigationCommand.Back)
     }
 
